@@ -1,0 +1,32 @@
+version: '2'
+services:
+  etcd:
+    image: gcr.io/etcd-development/etcd:v3.2.15
+    container_name: etcd
+    hostname: etcd
+    volumes:
+    - /etc/ssl/certs:/etc/ssl/certs
+    - /var/lib/etcd-cluster:/var/lib/etcd
+    - /etc/etcd/pki:/certs
+    ports:
+    - 4001:4001
+    - 2380:2380
+    - 2379:2379
+    restart: always
+    command: ["sh", "-c", "etcd --name={% if inventory_hostname == 'master-1' %}etcd-1{% elif inventory_hostname == 'master-2' %}etcd-2{% else %}etcd-3{% endif %} \
+      --advertise-client-urls http://{{ hostvars[inventory_hostname]['ansible_ens33']['ipv4']['address'] }}:2379,http://{{ hostvars[inventory_hostname]['ansible_ens33']['ipv4']['address'] }}:4001 \
+      --listen-client-urls http://0.0.0.0:2379,http://0.0.0.0:4001 \
+      --initial-advertise-peer-urls http://{{ hostvars[inventory_hostname]['ansible_ens33']['ipv4']['address'] }}:2380 \
+      --listen-peer-urls http://0.0.0.0:2380 \
+      --initial-cluster-token 9477af68bbee1b9ae037d6fd9e7efefd \
+      --initial-cluster etcd-1=http://{{ hostvars[groups['masters'][0]]['ansible_ens33']['ipv4']['address'] }}:2380,etcd-2=http://{{ hostvars[groups['masters'][1]]['ansible_ens33']['ipv4']['address'] }}:2380,etcd-3=http://{{ hostvars[groups['masters'][2]]['ansible_ens33']['ipv4']['address'] }}:2380 \
+      --cert-file=/certs/server.pem \
+      --key-file=/certs/server-key.pem \
+      --client-cert-auth \
+      --trusted-ca-file=/certs/ca.pem \
+      --peer-cert-file=/certs/peer.pem \
+      --peer-key-file=/certs/peer-key.pem \
+      --peer-client-cert-auth \
+      --peer-trusted-ca-file=/certs/ca.pem \
+      --initial-cluster-state new \
+      --data-dir=/var/lib/etcd"]

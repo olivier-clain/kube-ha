@@ -1,0 +1,159 @@
+---
+- template:
+    src: "{{ templates_dir }}/proxy.sh"
+    dest: /etc/profile.d/proxy.sh
+    mode: 755
+
+- name: reload firewalld
+  systemd:
+    name: firewalld
+    state: stopped
+
+- name: Step - Copy docker-images
+  copy:
+    src: "{{ files_dir }}/root/docker-images"
+    dest: "/root"
+    directory_mode: yes
+
+- name: Step - Copy docker-compose
+  copy:
+    src: "{{ files_dir }}{{ item }}"
+    dest: "{{ item }}"
+    mode: 755
+  with_items:
+    - /bin/docker-compose
+    - /etc/kubernetes/manifests/kube-flannel.yml
+  tags: copy-dock
+
+- template:
+    src: "{{ templates_dir }}{{ item }}"
+    dest: /root
+    mode: 755
+  tags: kubeadm-script
+  with_items:
+    - /root/etcd/docker-compose.yml
+    - /root/config.yml
+
+- name: Step - Load image from archive
+  docker_image:
+    name: "{{ item.name }}"
+    load_path: "/root/docker-images/{{ item.zip }}"
+    tag: "{{ item.version }}"
+  with_items: "{{ docker_images }}"
+  tags: docker_images
+
+# - name: step 3 - copy modified 10-kubeadm.conf
+#   copy:
+#     src: "{{ files_dir }}//etc/systemd/system/kubelet.service.d/10-kubeadm.conf"
+#     dest: /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+#     mode: 644
+#     owner: root
+#     group: root
+
+
+#
+- name: Step - Docker-compose - Etcd
+  shell: docker-compose up -d
+  args:
+    chdir: /root/
+
+- name: Step - Tasks only master-1
+  block:
+
+    - name: Initialize the first master node 1
+      shell: source /etc/profile && kubeadm init --config=config.yml > /root/master-init.out
+      tags: kubeadm-init-master-1
+
+    - name: Reload kubelet
+      systemd:
+        name: kubelet
+        enabled: yes
+        state: restarted
+        daemon_reload: yes
+
+    - fetch:
+        src: "{{ item }}"
+        dest: "{{ files_dir }}"
+      with_items:
+        - /etc/kubernetes/pki/apiserver.crt
+        - /etc/kubernetes/pki/apiserver.key
+        - /etc/kubernetes/pki/apiserver-kubelet-client.crt
+        - /etc/kubernetes/pki/apiserver-kubelet-client.key
+        - /etc/kubernetes/pki/ca.crt
+        - /etc/kubernetes/pki/ca.key
+        - /etc/kubernetes/pki/front-proxy-ca.crt
+        - /etc/kubernetes/pki/front-proxy-ca.key
+        - /etc/kubernetes/pki/front-proxy-client.crt
+        - /etc/kubernetes/pki/front-proxy-client.key
+        - /etc/kubernetes/pki/sa.key
+        - /etc/kubernetes/pki/sa.pub
+        - /root/master-init.out
+
+    - name: Get Flannel Script
+      copy:
+        src: "{{ files_dir }}/etc/kubernetes/manifests/kube-flannel.yml"
+        dest: /etc/kubernetes/manifests/kube-flannel.yml
+      tags: kube-flannel
+
+    - name: Install Flannel network
+      shell: kubectl apply -f /etc/kubernetes/manifests/kube-flannel.yml
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf
+      tags: kube-flannel
+
+  when: inventory_hostname == "{{ hostvars[groups['masters'][0]]['ansible_hostname'] }}"
+
+- name: Only run the other masters node except master-1
+  block:
+
+    - name: Copy certificate to all nodes
+      copy:
+        src: "{{ files_dir }}/master-1/{{ item }}"
+        dest: /etc/kubernetes/pki/
+      with_items:
+        - etc/kubernetes/pki/apiserver.crt
+        - etc/kubernetes/pki/apiserver.key
+        - etc/kubernetes/pki/apiserver-kubelet-client.crt
+        - etc/kubernetes/pki/apiserver-kubelet-client.key
+        - etc/kubernetes/pki/ca.crt
+        - etc/kubernetes/pki/ca.key
+        - etc/kubernetes/pki/front-proxy-ca.crt
+        - etc/kubernetes/pki/front-proxy-ca.key
+        - etc/kubernetes/pki/front-proxy-client.crt
+        - etc/kubernetes/pki/front-proxy-client.key
+        - etc/kubernetes/pki/sa.key
+        - etc/kubernetes/pki/sa.pub
+
+    - name: Initialize the first master node 2
+      shell: source /etc/profile && kubeadm init --config=config.yml > /root/master-init.out
+      tags: kubeadm-init-master-2
+      when: inventory_hostname == "{{ hostvars[groups['masters'][1]]['ansible_hostname'] }}"
+
+    - name: Initialize the first master node 3
+      shell: source /etc/profile && kubeadm init --config=config.yml > /root/master-init.out
+      tags: kubeadm-init-master-3
+      when: inventory_hostname == "{{ hostvars[groups['masters'][2]]['ansible_hostname'] }}"
+
+    - fetch:
+        src: /root/master-init.out
+        dest: "{{ files_dir }}"
+
+    - name: Reload kubelet
+      systemd:
+        name: kubelet
+        enabled: yes
+        state: restarted
+        daemon_reload: yes
+
+  when: inventory_hostname != "{{ hostvars[groups['masters'][0]]['ansible_hostname'] }}"
+
+- name: Step -  init user directory
+  shell: mkdir -p /home/vagrant/.kube
+
+- name: Step  -  init user directory
+  shell: cp -i /etc/kubernetes/admin.conf /home/vagrant/.kube/config
+
+# - name: étape 8 - get master status
+#   shell: kubectl cluster-info; kubectl get nodes; kubectl describe node centos-master > /tmp/master-status.out
+#   environment:
+#     KUBECONFIG: /etc/kubernetes/admin.conf

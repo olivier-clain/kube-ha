@@ -1,0 +1,24 @@
+apiVersion: kubeadm.k8s.io/v1alpha1
+kind: MasterConfiguration
+kubernetesVersion: v1.9.2
+networking:
+  podSubnet: 10.244.0.0/16
+apiServerCertSANs:
+- {{ hostvars[groups['masters'][0]]['ansible_hostname'] }}
+- {{ hostvars[groups['masters'][1]]['ansible_hostname'] }}
+- {{ hostvars[groups['masters'][2]]['ansible_hostname'] }}
+- {{ hostvars[groups['masters'][0]]['ansible_ens33']['ipv4']['address'] }}
+- {{ hostvars[groups['masters'][1]]['ansible_ens33']['ipv4']['address'] }}
+- {{ hostvars[groups['masters'][2]]['ansible_ens33']['ipv4']['address'] }}
+- 192.168.60.100
+- 127.0.0.1
+etcd:
+  endpoints:
+  - http://{{ hostvars[groups['masters'][0]]['ansible_ens33']['ipv4']['address'] }}:2379
+  - http://{{ hostvars[groups['masters'][1]]['ansible_ens33']['ipv4']['address'] }}:2379
+  - http://{{ hostvars[groups['masters'][2]]['ansible_ens33']['ipv4']['address'] }}:2379
+  caFile: /etc/etcd/pki/ca.pem
+  certFile: /etc/etcd/pki/client.pem
+  keyFile: /etc/etcd/pki/client-key.pem
+token: 7f276c.0741d82a5337f526
+tokenTTL: "0"

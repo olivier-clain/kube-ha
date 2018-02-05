@@ -1,0 +1,2 @@
+[clone]
+clone-1 ansible_ssh_host=192.168.60.5 ansible_ssh_port=22 ansible_ssh_user='root' ansible_ssh_private_key_file='/Users/narayann/.ssh/id_rsa'

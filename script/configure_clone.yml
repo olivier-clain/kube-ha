@@ -1,0 +1,32 @@
+- hosts: clone-1
+  gather_facts: false
+
+  tasks:
+    - name: wait for VM booting up
+      local_action:
+         module: wait_for host={{ ansible_ssh_host | default(inventory_hostname) }} port=22 delay=10 timeout=300
+
+    - name: Set new IP address
+      set_fact:
+        IPADDR: "{{ IPADDR }}"
+        HOSTNAME: "{{ HOSTNAME }}"
+
+    - name: Change  hostname
+      shell: "hostnamectl set-hostname {{ HOSTNAME }}"
+
+    - name: Push the network configuration
+      template:
+        src: ifcfg-ens33
+        dest: /etc/sysconfig/network-scripts/ifcfg-ens33
+
+    - name: Reboot the VM ...
+      shell: nohup bash -c "sleep 2s && reboot" &
+
+    - name: wait for VM booting up
+      local_action:
+         module: wait_for host={{ IPADDR }} port=22 delay=10 timeout=300
+
+
+    # - name: wait for new network settings
+    #   local_action:
+    #     module: wait_for host={{ ansible_ssh_host | default(inventory_hostname) }} port=22 delay=10 timeout=300

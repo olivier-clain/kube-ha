@@ -1,0 +1,45 @@
+# update_system file for requirements
+- name: Remove repository (and clean up left-over metadata)
+  file:
+    path: /etc/yum.repos.d/CentOS-Base.repo
+    state: absent
+
+- name: "Modify repository (CentOS)"
+  yum_repository:
+    name: "{{ item }}"
+    description: "CentOS-$releasever - {{ item }}"
+    mirrorlist: "http://mirrorlist.centos.org/?release=$releasever&arch=$basearch&repo={{ item }}&infra=$infra"
+    gpgcheck: no
+    enabled: yes
+    gpgkey:
+      - file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7
+    proxy: "{{ proxy }}"
+    proxy_password: "{{ proxy_password }}"
+    proxy_username: "{{ proxy_username }}"
+  with_items:
+    - os
+    - updates
+    - extras
+    - centosplus
+
+- name: Install epel-release
+  yum:
+    name: epel-release
+    state: latest
+
+# - name: Check for reboot hint.
+#   shell: LAST_KERNEL=$(rpm -q --last kernel | awk 'NR==1{sub(/kernel-/,""); print $1}'); CURRENT_KERNEL=$(uname -r); if [ $LAST_KERNEL != $CURRENT_KERNEL ]; then echo 'reboot'; else echo 'no'; fi
+#   ignore_errors: true
+#   register: reboot_hint
+
+# - name: reboot server
+#   shell: sleep 2 && /sbin/shutdown -r now "Ansible required a reboot for updated kernel"
+#   async: 1
+#   poll: 0
+#   ignore_errors: true
+#   when: reboot_hint.stdout.find("reboot") != -1
+#   register: rebooting
+#
+# - name: reboot server wait
+#   local_action: wait_for port=22 host="{{ ansible_ssh_host | default(inventory_hostname)
+#   when: rebooting|changed

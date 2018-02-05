@@ -1,0 +1,19 @@
+---
+- name: ouverture des flux avec firewalld
+  firewalld:
+    port: "{{ item }}"
+    permanent: true
+    state: enabled
+  with_items:
+    - 22/tcp
+    - 10250/tcp
+    - 30000-32767/tcp
+    - 10255/tcp
+    - 6783/tcp
+
+- name: recharge firewalld
+  systemd:
+    name: firewalld
+    state: reloaded
+
+- shell: "echo '1' > /proc/sys/net/bridge/bridge-nf-call-iptables"

@@ -1,0 +1,33 @@
+---
+# tasks file for master
+- name: install packages
+  yum:
+    name: "{{item}}"
+    state: present
+  with_items:
+    - kubeadm
+    - keepalived
+    - kubectl
+
+- name: Activation des services docker, keepalived et kubelet
+  systemd:
+    name: "{{item}}"
+    enabled: yes
+    state: started
+    daemon_reload: yes
+  with_items:
+    - docker
+    - keepalived
+    - kubelet
+
+- name: ouverture des flux
+  import_tasks: open_firewall.yml
+  tags: open_firewall
+
+- name: generate_certificat
+  import_tasks: generate_certificat.yml
+  tags: generate_certificat
+
+- name: run kubernetes setup
+  import_tasks: kubernetes_setup.yml
+  tags: kubernetes_setup

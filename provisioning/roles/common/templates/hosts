@@ -1,0 +1,6 @@
+127.0.0.1 localhost
+#
+{{ hostvars[groups['masters'][0]]['ansible_ens33']['ipv4']['address'] }} {{ hostvars[groups['masters'][0]]['ansible_hostname'] }}
+{{ hostvars[groups['masters'][1]]['ansible_ens33']['ipv4']['address'] }} {{ hostvars[groups['masters'][1]]['ansible_hostname'] }}
+{{ hostvars[groups['masters'][2]]['ansible_ens33']['ipv4']['address'] }} {{ hostvars[groups['masters'][2]]['ansible_hostname'] }}
+{{ hostvars[groups['workers'][0]]['ansible_ens33']['ipv4']['address'] }} {{ hostvars[groups['workers'][0]]['ansible_hostname'] }}

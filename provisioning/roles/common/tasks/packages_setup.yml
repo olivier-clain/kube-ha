@@ -1,0 +1,51 @@
+---
+- name: Step 1/4 - Add Kubernetes repository and install gpg key (CentOS)
+  yum_repository:
+    name: kubernetes
+    description: Kubernetes repository
+    baseurl: https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+    gpgcheck: no
+    enabled: yes
+    gpgkey:
+      - https://packages.cloud.google.com/yum/doc/yum-key.gpg
+      - https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+    proxy: "{{ proxy }}"
+    proxy_password: "{{ proxy_password }}"
+    proxy_username: "{{ proxy_username }}"
+
+# - name: "Add docker repository and install gpg key (CentOS)"
+#   yum_repository:
+#     name: docker-ce
+#     description: docker-ce
+#     baseurl: https://download.docker.com/linux/centos/7/$basearch/stable
+#     gpgcheck: no
+#     enabled: no
+#     gpgkey:
+#       - https://download.docker.com/linux/centos/gpg
+#     proxy: "{{ proxy }}"
+#     proxy_password: "{{ proxy_password }}"
+#     proxy_username: "{{ proxy_username }}"
+
+- name: Step 2/4 - Install packages
+  yum:
+    name: "{{item}}"
+    state: present
+  with_items:
+    - docker
+    - docker-python
+    - kubelet
+    - lsof
+    - vim
+    - htop
+    - glances
+
+- name: Step 3/4 - Create docker service.d directory
+  file:
+    path: /etc/systemd/system/docker.service.d/
+    state: directory
+    mode: 0755
+
+- name: Step 4/4 -  Add proxy configuration for docker
+  template:
+    src: "{{ templates_dir }}/http-proxy.conf"
+    dest: /etc/systemd/system/docker.service.d/http-proxy.conf

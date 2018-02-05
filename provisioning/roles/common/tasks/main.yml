@@ -1,0 +1,50 @@
+---
+# tasks file for common
+- name: Step 1/8 - add hosts files
+  template:
+    src: "{{templates_dir}}/hosts"
+    dest: "/etc/hosts"
+    owner: root
+    group: root
+    mode: 0644
+  tags: hosts
+
+# - sysctl:
+#     name: net.ipv4.ip_forward
+#     value: 1
+#     sysctl_set: yes
+#     state: present
+#     reload: yes
+#     sysctl_file: /etc/sysctl.d/k8s.conf
+- name: Step 2/8 - Add kernel module
+  copy:
+    src: "{{ files_dir }}/etc/sysctl.d/k8s.conf"
+    dest: /etc/sysctl.d/k8s.conf
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Step 3/8 - Reload kernel module
+  shell: sysctl --system
+
+- name: Step 1/8 - Set selinux to permissive
+  selinux:
+    policy: targeted
+    state: permissive
+
+- name: Step 4/8 - Disable swap
+  shell: swapoff --all
+
+- name: Step 5/8 - Remove swap from fstab
+  lineinfile:
+    dest: /etc/fstab
+    state: absent
+    regexp: 'swap'
+
+- name: Step 6/8 - Update packages
+  import_tasks: packages_update.yml
+  tags: packages_update
+
+- name: Step 7/8 - Setup prerequisites packages
+  import_tasks: packages_setup.yml
+  tags: packages_setup

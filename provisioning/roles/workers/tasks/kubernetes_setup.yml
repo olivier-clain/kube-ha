@@ -1,0 +1,3 @@
+---
+- name: join master
+  shell: kubeadm join --token a3bd48.1bc42347c3b35851 192.168.1.30:6443

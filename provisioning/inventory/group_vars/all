@@ -1,0 +1,26 @@
+---
+templates_dir: "{{ role_path }}/templates"
+files_dir: "{{ role_path }}/files"
+http_proxy: http://pouyan_shah_nazari:Bravo_17_Jason@10.176.205.3:8090
+https_proxy: https://pouyan_shah_nazari:Bravo_17_Jason@10.176.205.3:8090
+proxy: http://10.176.205.3:8090
+proxy_username: pouyan_shah_nazari
+proxy_password: Bravo_17_Jason
+service_cidr: 10.96.0.0/12
+pod_network_cidr: 10.244.0.0/16
+keepalived:
+  ip: 11.0.0.100
+
+
+docker_images:
+  - {name: etcd, zip: etcd.v3.2.15.tar, version: 3.2.15}
+  - {name: flannel, zip: flannel.v0.10.0-amd64.tar, version: 0.10.0}
+  - {name: k8s-dns-dnsmasq-nanny, zip: k8s-dns-dnsmasq-nanny-amd64.1.14.7.tar, version:  1.14.7}
+  - {name: k8s-dns-kube-dns, zip: k8s-dns-kube-dns-amd64.1.14.7.tar, version: 1.14.7}
+  - {name: k8s-dns-sidecar, zip: k8s-dns-sidecar-amd64.1.14.7.tar, version: 1.14.7}
+  - {name: kube-apiserver, zip: kube-apiserver-amd64.v1.9.2.tar, version: 1.9.2}
+  - {name: kube-controller-manager, zip: kube-controller-manager-amd64.v1.9.2.tar, version: 1.9.2}
+  - {name: kube-proxy, zip: kube-proxy-amd64.v1.9.2.tar, version: 1.9.2}
+  - {name: kube-scheduler, zip: kube-scheduler-amd64.v1.9.2.tar, version: 1.9.2}
+  - {name: pause, zip: pause-amd64.3.0.tar, version: 3.0}
+  - {name: nginx, zip: nginx.tar, version: 1.13.8}

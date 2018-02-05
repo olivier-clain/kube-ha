@@ -1,0 +1,7 @@
+---
+# tasks file for workers
+- name: ouverture des flux
+  import_tasks: open_firewall.yml
+
+- name: run kubernetes setup
+  import_tasks: kubernetes_setup.yml  

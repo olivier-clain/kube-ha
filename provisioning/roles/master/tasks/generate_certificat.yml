@@ -1,0 +1,79 @@
+---
+- file:
+    path: /etc/etcd/pki
+    state: directory
+    mode: 0755
+
+- copy:
+    src: "{{ files_dir }}/{{ item }}"
+    dest: "/{{ item }}"
+    mode: 0755
+  with_items:
+    - bin/cfssl_linux-amd64
+    - bin/cfssljson_linux-amd64
+
+- name: generate master certificate
+  block:
+
+    - copy:
+        src: "{{ files_dir }}/{{ item }}"
+        dest: "/{{ item }}"
+        mode: 0755
+      with_items:
+        - etc/etcd/pki/ca-config.json
+        - etc/etcd/pki/ca-csr.json
+        - etc/etcd/pki/client.json
+
+    - name: gencert
+      shell: cfssl_linux-amd64 gencert -initca ca-csr.json | cfssljson_linux-amd64 -bare ca -
+      args:
+        chdir: /etc/etcd/pki/
+
+    - name: generate client
+      shell: cfssl_linux-amd64 gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=client client.json | cfssljson_linux-amd64 -bare client
+      args:
+        chdir: /etc/etcd/pki/
+
+
+    - fetch:
+        src: "{{ item }}"
+        dest: "{{ files_dir }}"
+      with_items:
+      - /etc/etcd/pki/ca.pem
+      - /etc/etcd/pki/ca-key.pem
+      - /etc/etcd/pki/client.pem
+      - /etc/etcd/pki/client-key.pem
+      - /etc/etcd/pki/ca-config.json
+
+  when: inventory_hostname == "master-1"
+
+- name: only the other other nodes
+  block:
+
+    - name: copy certificate to all nodes
+      copy:
+        src: "{{ files_dir }}/master-1/{{ item }}"
+        dest: /etc/etcd/pki/
+      with_items:
+        - /etc/etcd/pki/ca.pem
+        - /etc/etcd/pki/ca-key.pem
+        - /etc/etcd/pki/client.pem
+        - /etc/etcd/pki/client-key.pem
+        - /etc/etcd/pki/ca-config.json
+      tags: sync
+
+  when: inventory_hostname != "master-1"
+
+- name: copy config.json
+  template:
+    src: config.json
+    dest: /etc/etcd/pki/config.json
+    mode: 0755
+
+- name: generate server & peer certificate
+  shell: "{{ item }}"
+  args:
+    chdir: /etc/etcd/pki/
+  with_items:
+    - cfssl_linux-amd64 gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=server config.json | cfssljson_linux-amd64 -bare server
+    - cfssl_linux-amd64 gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=peer config.json | cfssljson_linux-amd64 -bare peer
